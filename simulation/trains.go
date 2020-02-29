@@ -182,14 +182,12 @@ func (t *Train) activate(h Time) {
 	if h.Sub(realAppearTime) < 0 {
 		return
 	}
-	//check if there is a train in the section already, defer if there is
-	//if trainaheadinsection() {
-	//	return
-	//}
+
 	t.Speed = t.InitialSpeed
 	signalAhead := t.findNextSignal()
 
-	if signalAhead != nil {
+	if signalAhead != nil || t.lineClearToActivateTrain(signalAhead) == false {
+		return
 	}
 
 	// Update signals
@@ -348,11 +346,19 @@ func NextSignalPosition(pos Position) Position {
 
 }
 
-// nextSignalTrackItems returns a list of trackitems between the head of the train and the
-// next signal
-//func (t *Train) nextSignaTrackItems() []TrackItem {
-//	return t.NextSignalPosition(t.TrainHead().position)
-//}
+// lineClearToActivateTrain() returns true is there are no active services in the
+//  trains current position, or in any of the trackitems up to the next signal
+//
+func (t *Train) lineClearToActivateTrain(signalAhead *SignalItem) bool {
+	t.TrainHead.TrackItem().underlying().trainEndMutex.Lock()
+	defer t.TrainHead.TrackItem().underlying().trainEndMutex.Unlock()
+	for _, tti := range t.TrainTail().trackItemsToPosition(signalAhead.Position()) {
+		if len(tti.underlying().trainEndsFW) > 0 || len(tti.underlying().trainEndsBK) > 0 {
+			return false
+		}
+	}
+	return true
+}
 
 // findNextSignal returns the next signal in front of this Train
 func (t *Train) findNextSignal() *SignalItem {
