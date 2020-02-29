@@ -186,7 +186,7 @@ func (t *Train) activate(h Time) {
 	t.Speed = t.InitialSpeed
 	signalAhead := t.findNextSignal()
 
-	if signalAhead != nil || t.lineClearToActivateTrain(signalAhead) == false {
+	if t.lineClearToActivateTrain(signalAhead) == false {
 		return
 	}
 
@@ -350,6 +350,9 @@ func NextSignalPosition(pos Position) Position {
 //  trains current position, or in any of the trackitems up to the next signal
 //
 func (t *Train) lineClearToActivateTrain(signalAhead *SignalItem) bool {
+	if signalAhead == nil {
+		return true
+	}
 	t.TrainHead.TrackItem().underlying().trainEndMutex.Lock()
 	defer t.TrainHead.TrackItem().underlying().trainEndMutex.Unlock()
 	for _, tti := range t.TrainTail().trackItemsToPosition(signalAhead.Position()) {
