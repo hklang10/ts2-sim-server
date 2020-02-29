@@ -188,10 +188,9 @@ func (t *Train) activate(h Time) {
 	//}
 	t.Speed = t.InitialSpeed
 	signalAhead := t.findNextSignal()
-	
+
 	if signalAhead != nil {
 	}
-
 
 	// Update signals
 	if signalAhead != nil {
@@ -351,9 +350,9 @@ func NextSignalPosition(pos Position) Position {
 
 // nextSignalTrackItems returns a list of trackitems between the head of the train and the
 // next signal
-func (t *Train) nextSignaTrackItems() []TrackItem {
-	return t.NextSignalPosition(t.TrainHead().position)
-}
+//func (t *Train) nextSignaTrackItems() []TrackItem {
+//	return t.NextSignalPosition(t.TrainHead().position)
+//}
 
 // findNextSignal returns the next signal in front of this Train
 func (t *Train) findNextSignal() *SignalItem {
