@@ -182,16 +182,22 @@ func (t *Train) activate(h Time) {
 	if h.Sub(realAppearTime) < 0 {
 		return
 	}
+	//check if there is a train in the section already, defer if there is
+	//if trainaheadinsection() {
+	//	return
+	//}
 	t.Speed = t.InitialSpeed
+	signalAhead := t.findNextSignal()
+	
+	if signalAhead != nil {
+	}
+
+
 	// Update signals
-	if signalAhead := t.findNextSignal(); signalAhead != nil {
+	if signalAhead != nil {
 		signalAhead.setTrain(t)
 	}
-	// Status update
-	t.Status = Running
-	if t.StoppedTime != 0 || t.Service() == nil {
-		t.Status = Stopped
-	}
+
 	if t.Service() != nil {
 		t.NextPlaceIndex = 0
 	}
@@ -202,6 +208,13 @@ func (t *Train) activate(h Time) {
 		Speed:  VeryHighSpeed,
 	}}
 	t.setActionIndex(0)
+	t.updateSignalActions()
+
+	// Status update
+	t.Status = Running
+	if t.StoppedTime != 0 || t.Service() == nil {
+		t.Status = Stopped
+	}
 	// Log status change
 	t.logTrainEntersArea()
 }
@@ -336,6 +349,12 @@ func NextSignalPosition(pos Position) Position {
 
 }
 
+// nextSignalTrackItems returns a list of trackitems between the head of the train and the
+// next signal
+func (t *Train) nextSignaTrackItems() []TrackItem {
+	return t.NextSignalPosition(t.TrainHead().position)
+}
+
 // findNextSignal returns the next signal in front of this Train
 func (t *Train) findNextSignal() *SignalItem {
 	nsp := t.NextSignalPosition()
@@ -346,7 +365,8 @@ func (t *Train) findNextSignal() *SignalItem {
 }
 
 // updateSignalActions updates the applicable signal actions list based on the position
-// of the train and the visible signal.
+// of the train and the visible signal.  If the train-status is Inactive (not entered scene)
+// we will ignore visibility so that the train can approach the first signal at a correct speed.
 func (t *Train) updateSignalActions() {
 	nsp := t.NextSignalPosition()
 	if nsp.Equals(Position{}) {
@@ -364,8 +384,8 @@ func (t *Train) updateSignalActions() {
 		Logger.Crit("unexpected error", "error", err)
 		return
 	}
-	if nsd < t.simulation.Options.DefaultSignalVisibility && (t.ignoredSignal == nil || !nextSignal.Equals(t.ignoredSignal)) {
-		// We can see the next signal aspect
+	if (t.Status == Inactive) || (nsd < t.simulation.Options.DefaultSignalVisibility && (t.ignoredSignal == nil || !nextSignal.Equals(t.ignoredSignal))) {
+		// We can see the next signal aspect, or if inactive, need to use maximum visibility
 		if len(nextSignal.activeAspect.Actions) > 0 {
 			// It requires actions
 			// We check actions each time because the aspect of the signal
