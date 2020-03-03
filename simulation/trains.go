@@ -182,29 +182,18 @@ func (t *Train) activate(h Time) {
 	if h.Sub(realAppearTime) < 0 {
 		return
 	}
+	if t.lineClearToActivateTrain(t.findNextSignal()) == false {
+		return
+	}
 
 	t.Speed = t.InitialSpeed
 	signalAhead := t.findNextSignal()
-
-	if t.lineClearToActivateTrain(signalAhead) == false {
-		return
-	}
 
 	// Update signals
 	if signalAhead != nil {
 		signalAhead.setTrain(t)
 	}
-
-	if t.Service() != nil {
-		t.NextPlaceIndex = 0
-	}
-	t.executeActions(0)
-	// Signal actions update
-	t.signalActions = []SignalAction{{
-		Target: ASAP,
-		Speed:  VeryHighSpeed,
-	}}
-	t.setActionIndex(0)
+	// examine the signal ahead to set the correct speed for train
 	t.updateSignalActions()
 
 	// Status update
@@ -212,6 +201,11 @@ func (t *Train) activate(h Time) {
 	if t.StoppedTime != 0 || t.Service() == nil {
 		t.Status = Stopped
 	}
+	if t.Service() != nil {
+		t.NextPlaceIndex = 0
+	}
+	t.executeActions(0)
+
 	// Log status change
 	t.logTrainEntersArea()
 }
@@ -346,8 +340,7 @@ func NextSignalPosition(pos Position) Position {
 
 }
 
-// lineClearToActivateTrain() returns true is there are no active services in the
-//  trains current position, or in any of the trackitems up to the next signal
+// lineClearToActivateTrain() returns true if there are no trains before the next signal
 //
 func (t *Train) lineClearToActivateTrain(signalAhead *SignalItem) bool {
 	if signalAhead == nil {
