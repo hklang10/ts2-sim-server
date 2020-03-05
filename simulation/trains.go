@@ -168,7 +168,8 @@ func (t *Train) IsActive() bool {
 		t.Status != EndOfService
 }
 
-// activate this Train if this train is Inactive and if h is after its AppearTime.
+// activate this Train if this train is Inactive and if h is after its AppearTime
+// and there is no other train before the first signal.
 //
 // In all other cases, this method is a no-op
 func (t *Train) activate(h Time) {
