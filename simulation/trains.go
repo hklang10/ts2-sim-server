@@ -186,12 +186,9 @@ func (t *Train) activate(h Time) {
 	if t.lineClearToActivateTrain(t.findNextSignal()) == false {
 		return
 	}
-
 	t.Speed = t.InitialSpeed
-	signalAhead := t.findNextSignal()
-
 	// Update signals
-	if signalAhead != nil {
+	if signalAhead := t.findNextSignal(); signalAhead != nil {
 		signalAhead.setTrain(t)
 	}
 	// examine the signal ahead to set the correct speed for train
