@@ -168,7 +168,8 @@ func (t *Train) IsActive() bool {
 		t.Status != EndOfService
 }
 
-// activate this Train if this train is Inactive and if h is after its AppearTime.
+// activate this Train if this train is Inactive and if h is after its AppearTime
+// and there is no other train before the first signal.
 //
 // In all other cases, this method is a no-op
 func (t *Train) activate(h Time) {
@@ -182,11 +183,17 @@ func (t *Train) activate(h Time) {
 	if h.Sub(realAppearTime) < 0 {
 		return
 	}
+	if t.lineClearToActivateTrain(t.findNextSignal()) == false {
+		return
+	}
 	t.Speed = t.InitialSpeed
 	// Update signals
 	if signalAhead := t.findNextSignal(); signalAhead != nil {
 		signalAhead.setTrain(t)
 	}
+	// examine the signal ahead to set the correct speed for train
+	t.updateSignalActions()
+
 	// Status update
 	t.Status = Running
 	if t.StoppedTime != 0 || t.Service() == nil {
@@ -196,12 +203,7 @@ func (t *Train) activate(h Time) {
 		t.NextPlaceIndex = 0
 	}
 	t.executeActions(0)
-	// Signal actions update
-	t.signalActions = []SignalAction{{
-		Target: ASAP,
-		Speed:  VeryHighSpeed,
-	}}
-	t.setActionIndex(0)
+
 	// Log status change
 	t.logTrainEntersArea()
 }
@@ -336,6 +338,22 @@ func NextSignalPosition(pos Position) Position {
 
 }
 
+// lineClearToActivateTrain() returns true if there are no trains before the next signal
+//
+func (t *Train) lineClearToActivateTrain(signalAhead *SignalItem) bool {
+	if signalAhead == nil {
+		return true
+	}
+	t.TrainHead.TrackItem().underlying().trainEndMutex.Lock()
+	defer t.TrainHead.TrackItem().underlying().trainEndMutex.Unlock()
+	for _, tti := range t.TrainTail().trackItemsToPosition(signalAhead.Position()) {
+		if len(tti.underlying().trainEndsFW) > 0 || len(tti.underlying().trainEndsBK) > 0 {
+			return false
+		}
+	}
+	return true
+}
+
 // findNextSignal returns the next signal in front of this Train
 func (t *Train) findNextSignal() *SignalItem {
 	nsp := t.NextSignalPosition()
@@ -346,7 +364,8 @@ func (t *Train) findNextSignal() *SignalItem {
 }
 
 // updateSignalActions updates the applicable signal actions list based on the position
-// of the train and the visible signal.
+// of the train and the visible signal.  If the train-status is Inactive (not entered scene)
+// we will ignore visibility so that the train can approach the first signal at a correct speed.
 func (t *Train) updateSignalActions() {
 	nsp := t.NextSignalPosition()
 	if nsp.Equals(Position{}) {
@@ -364,8 +383,8 @@ func (t *Train) updateSignalActions() {
 		Logger.Crit("unexpected error", "error", err)
 		return
 	}
-	if nsd < t.simulation.Options.DefaultSignalVisibility && (t.ignoredSignal == nil || !nextSignal.Equals(t.ignoredSignal)) {
-		// We can see the next signal aspect
+	if (t.Status == Inactive) || (nsd < t.simulation.Options.DefaultSignalVisibility && (t.ignoredSignal == nil || !nextSignal.Equals(t.ignoredSignal))) {
+		// We can see the next signal aspect, or if inactive, need to use maximum visibility
 		if len(nextSignal.activeAspect.Actions) > 0 {
 			// It requires actions
 			// We check actions each time because the aspect of the signal
