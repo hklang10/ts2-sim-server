@@ -637,6 +637,12 @@ func (t *Train) logAndScoreTrainStoppedAtStation() {
 	scheduledArrivalTime := serviceLine.ScheduledArrivalTime
 	currentTime := sim.Options.CurrentTime
 	delay := currentTime.Sub(scheduledArrivalTime)
+	if scheduledArrivalTime.Hour() == 0 && scheduledArrivalTime.Minute() == 0 && scheduledArrivalTime.Second() == 0 {
+		//no penalty if the schedule time of arrival is 00:00:00
+		sim.MessageLogger.addMessage(fmt.Sprintf("Train %s arrived at station %s",
+			t.ServiceCode, place.Name()), simulationMsg)
+		return
+	}
 	if delay > time.Minute {
 		playerDelay := delay - t.effInitialDelay
 		if playerDelay > time.Minute {
