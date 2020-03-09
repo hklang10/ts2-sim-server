@@ -271,7 +271,12 @@ func (sim *Simulation) Initialize() error {
 		}
 		si.updateSignalState()
 	}
-
+	//force train ID's into berths - needed when restoring saved games
+	for _, t := range sim.Trains {
+		if signalAhead := t.findNextSignal(); signalAhead != nil {
+			signalAhead.setTrain(t)
+		}
+	}
 	return nil
 }
 

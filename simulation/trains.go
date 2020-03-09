@@ -383,7 +383,10 @@ func (t *Train) updateSignalActions() {
 		Logger.Crit("unexpected error", "error", err)
 		return
 	}
-	if (t.Status == Inactive) || (nsd < t.simulation.Options.DefaultSignalVisibility && (t.ignoredSignal == nil || !nextSignal.Equals(t.ignoredSignal))) {
+	if (t.Status == Inactive) ||
+		(len(t.signalActions) == 0) ||
+		// t.signalActions is empty for restored save files, so rebuild
+		(nsd < t.simulation.Options.DefaultSignalVisibility && (t.ignoredSignal == nil || !nextSignal.Equals(t.ignoredSignal))) {
 		// We can see the next signal aspect, or if inactive, need to use maximum visibility
 		if len(nextSignal.activeAspect.Actions) > 0 {
 			// It requires actions
@@ -654,6 +657,12 @@ func (t *Train) logAndScoreTrainStoppedAtStation() {
 			t.ServiceCode, place.Name(), actualPlatform, plannedPlatform), simulationMsg)
 	}
 	scheduledArrivalTime := serviceLine.ScheduledArrivalTime
+	if scheduledArrivalTime.Hour() == 0 && scheduledArrivalTime.Minute() == 0 && scheduledArrivalTime.Second() == 0 {
+		//no penalty if the schedule time of arrival is 00:00:00
+		sim.MessageLogger.addMessage(fmt.Sprintf("Train %s arrived at station %s",
+			t.ServiceCode, place.Name()), simulationMsg)
+		return
+	}
 	currentTime := sim.Options.CurrentTime
 	delay := currentTime.Sub(scheduledArrivalTime)
 	if delay > time.Minute {
